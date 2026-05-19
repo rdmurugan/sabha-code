@@ -1,0 +1,10 @@
+anthropic>=0.40
+PyYAML>=6.0
+
+# Optional — only needed when using --judge-provider {openai,google}
+# (the cross-model judge harness for defeating in-family bias).
+# Uncomment the providers you want to use, or install separately:
+#   pip install 'openai>=1.0'
+#   pip install 'google-generativeai>=0.7'
+# openai>=1.0
+# google-generativeai>=0.7

@@ -1,0 +1,359 @@
+# Sabha Code — eval question set v1 (n=30)
+#
+# 30 developer-shaped questions across 7 roles + 3 credibility-stress buckets:
+#
+#   ROLE-CORE (20 questions) — operator-shaped engineering decisions in
+#                              each role's sweet spot.
+#
+#   ADVERSARIAL-REFRAMING (5) — questions where the right answer is to
+#                                challenge the premise, not apply structure.
+#                                Where Sabha Code's discipline might become
+#                                rigidity.
+#
+#   UNDERDOG (5)              — definitional / lookup-shaped / "what does X
+#                                mean" questions where a baseline LLM is
+#                                already good. If Sabha Code wins these too,
+#                                the protocol generalizes beyond its
+#                                sweet spot.
+
+questions:
+  # ─── ARCHITECT (4) ──────────────────────────────────────────────────────
+  - id: arch-01
+    role: Architect
+    category: system-design
+    prompt: |
+      We're building a B2B SaaS that handles ~5K req/s sustained, ~20K
+      peak. Should we go with a single Postgres + read replicas, or
+      separate write/read services with a message bus between them?
+    notes: |
+      Strong reply names a constraint that breaks the tie (e.g.,
+      consistency requirements, team size, ops maturity) and commits.
+
+  - id: arch-02
+    role: Architect
+    category: build-vs-buy
+    prompt: |
+      We need a feature-flag system. Three options: (a) build it ourselves
+      (~2 weeks), (b) LaunchDarkly ($), (c) Unleash (open-source, self-host).
+      Stack: TypeScript backend, Postgres, Vercel + Render. Team of 4.
+    notes: |
+      Strong reply names the actual variables (team size, op overhead,
+      payback timeline) and recommends one with tradeoff.
+
+  - id: arch-03
+    role: Architect
+    category: data-model
+    prompt: |
+      Designing a multi-tenant SaaS. Should we use schema-per-tenant,
+      row-level tenant_id, or separate databases per tenant?
+    notes: |
+      Strong reply commits and names the kill criterion (when does this
+      need to change).
+
+  - id: arch-04
+    role: Architect
+    category: refactoring
+    prompt: |
+      We have a 200K-line monolith that's slowing dev velocity. The team
+      wants to split it into microservices. Is that the right move?
+    notes: |
+      Strong reply challenges the assumption that microservices fix dev
+      velocity, names the actual problem (likely build times, test
+      isolation, code ownership), and recommends targeted fixes first.
+
+  # ─── REVIEWER (3) ──────────────────────────────────────────────────────
+  - id: rev-01
+    role: Reviewer
+    category: code-review
+    prompt: |
+      Reviewing a PR. The function `processData(input)` is 180 lines,
+      handles validation, transformation, and persistence in one block.
+      Tests pass. Should I block on splitting it, suggest splitting, or
+      approve?
+    notes: |
+      Strong reply commits to one of the three and names the cost to the
+      next reader.
+
+  - id: rev-02
+    role: Reviewer
+    category: abstraction
+    prompt: |
+      A teammate is introducing a `BaseService` class that 3 of our 5
+      service classes will inherit from. Should I push back on the
+      abstraction, or wait?
+    notes: |
+      Strong reply names the rule-of-three risk and the specific
+      smell (premature abstraction with only 3 callers).
+
+  - id: rev-03
+    role: Reviewer
+    category: naming
+    prompt: |
+      The variable name in the diff is `handleStuff`. The function takes
+      a request, validates, logs, and returns a response. Nit, suggestion,
+      or blocking?
+    notes: |
+      Strong reply commits to one severity level and proposes the
+      replacement name.
+
+  # ─── SECURITY (3) ──────────────────────────────────────────────────────
+  - id: sec-01
+    role: Security
+    category: sql-injection
+    prompt: |
+      Found this in legacy code:
+      `db.query("SELECT * FROM users WHERE email = '" + req.body.email + "'")`
+      The endpoint is internal-only (behind VPN). Patch immediately, fix
+      in next sprint, or accept the risk because of the VPN?
+    notes: |
+      Strong reply names the VPN as defense-in-depth not defense-in-place
+      and patches immediately. Calls out that "internal only" is not a
+      security boundary.
+
+  - id: sec-02
+    role: Security
+    category: secrets
+    prompt: |
+      Our CI exposes a `STRIPE_API_KEY` env var to every job. Engineers
+      can read CI logs. The key has full live mode access. What's the
+      right move?
+    notes: |
+      Strong reply names: (a) the trust boundary is wrong, (b) rotate
+      the key today, (c) switch to a restricted-scope key for prod jobs
+      only, (d) audit logs for prior exposure.
+
+  - id: sec-03
+    role: Security
+    category: dependencies
+    prompt: |
+      `npm audit` shows 14 high-severity vulnerabilities in transitive
+      deps. Most are in a CLI tool we only use at dev time. Fix all,
+      fix prod-facing only, or ignore?
+    notes: |
+      Strong reply names the threat model difference between dev-time
+      and prod-facing deps, commits to fixing prod-facing now and
+      tracking dev-time in a backlog with a refresh-cadence rule.
+
+  # ─── PERFORMANCE (3) ───────────────────────────────────────────────────
+  - id: perf-01
+    role: Performance
+    category: n-plus-1
+    prompt: |
+      An endpoint serves a list of 100 orders + their line items. Current
+      p99 is 1.2s. Profiling shows 100 separate SQL queries for line items.
+      Fix the N+1, add a cache, or both?
+    notes: |
+      Strong reply commits to fixing N+1 first (cheapest move that
+      breaks the bottleneck), names the order-of-magnitude improvement,
+      and explicitly doesn't add a cache until measurement justifies it.
+
+  - id: perf-02
+    role: Performance
+    category: caching
+    prompt: |
+      We're getting hammered by an external API that rate-limits us.
+      Current cache TTL is 60s, hit rate 12%. The TTL is wrong — should
+      we drop to 10s or push to 5 minutes?
+    notes: |
+      Strong reply names that the question presupposes you know the
+      access pattern. The right answer depends on whether the data
+      tolerates staleness; commit to either direction with the
+      condition that decides.
+
+  - id: perf-03
+    role: Performance
+    category: profiling
+    prompt: |
+      Latency is fine at p50 (12ms) but p99 is 800ms. Where do I look
+      first?
+    notes: |
+      Strong reply names that p50 vs p99 divergence almost always means
+      a long-tail blocker (network jitter, GC pause, lock contention,
+      DB connection pool exhaustion). Suggests profiling p99-specific
+      requests, not averaging.
+
+  # ─── QA (3) ────────────────────────────────────────────────────────────
+  - id: qa-01
+    role: QA
+    category: test-strategy
+    prompt: |
+      We're shipping a new payments integration. Unit tests cover the
+      logic. Should we add integration tests with Stripe's test mode,
+      E2E tests, or both?
+    notes: |
+      Strong reply commits and names the contract that each level tests.
+      Integration tests for the boundary; E2E only for revenue-affecting
+      user flows.
+
+  - id: qa-02
+    role: QA
+    category: flake-hunting
+    prompt: |
+      A test in CI passes locally but fails ~10% of the time in CI.
+      Different errors each time. How do I find it?
+    notes: |
+      Strong reply walks the standard flake-hunting checklist
+      (order dependency, timer, external dep, concurrency, random
+      without seed, resource leak) and commits to fixing or deleting,
+      not retrying.
+
+  - id: qa-03
+    role: QA
+    category: coverage
+    prompt: |
+      Coverage is at 84%. The auth middleware is uncovered. The CEO is
+      pushing for new features. Push back, accept, or compromise?
+    notes: |
+      Strong reply names that 84% is meaningless without weighting risk.
+      The auth middleware should be tested before feature work; commit.
+
+  # ─── MENTOR (2) ────────────────────────────────────────────────────────
+  - id: men-01
+    role: Mentor
+    category: debugging
+    prompt: |
+      A junior on my team is stuck on a `KeyError: 'user_id'` from
+      yesterday and has been adding print statements all morning.
+      How do I help without doing it for them?
+    notes: |
+      Strong reply teaches the move (walk the bug backwards from
+      symptom to first divergence point) rather than fixing it.
+
+  - id: men-02
+    role: Mentor
+    category: learning
+    prompt: |
+      I'm a backend engineer who's mostly worked on REST APIs. I want to
+      get better at distributed systems. What should I learn first?
+    notes: |
+      Strong reply names the smallest first thing (e.g., understanding
+      what 'eventually consistent' actually means, with a concrete
+      experiment), not a 12-book reading list.
+
+  # ─── TECH LEAD (2) ─────────────────────────────────────────────────────
+  - id: tl-01
+    role: Tech Lead
+    category: scope-cut
+    prompt: |
+      We're 2 weeks behind on a 6-week feature. The team is asking
+      whether to (a) extend by 2 weeks, (b) cut scope, (c) push
+      harder. What do I say?
+    notes: |
+      Strong reply names that "push harder" is the cop-out, commits to
+      either extend or cut with the kill criterion.
+
+  - id: tl-02
+    role: Tech Lead
+    category: tech-debt
+    prompt: |
+      Architect wants to rewrite our auth layer. Reviewer says it's fine
+      for now. Performance says it's the bottleneck at p99. All three
+      are partially right. What's the call?
+    notes: |
+      Strong reply synthesizes the tension, names which constraint
+      breaks the tie, commits to a sequenced plan.
+
+  # ─── ADVERSARIAL REFRAMING (5) ─────────────────────────────────────────
+  - id: adv-01
+    role: Performance
+    category: adversarial-reframing
+    prompt: |
+      Our API response time is 200ms p50 and the team wants to optimize
+      to 50ms. Approve the work?
+    notes: |
+      Reframe: 200ms p50 is fast. The team wants to optimize without
+      naming why. Strong reply asks what user impact is driving this.
+
+  - id: adv-02
+    role: Architect
+    category: adversarial-reframing
+    prompt: |
+      Should we use Kubernetes for our 3-person startup with two services?
+    notes: |
+      Reframe: K8s for 3-person startup is almost certainly wrong.
+      Strong reply names that the question is asking the wrong
+      question; recommend Render, Fly, or a single VM.
+
+  - id: adv-03
+    role: Reviewer
+    category: adversarial-reframing
+    prompt: |
+      A PR adds 800 lines of "defensive coding" — null checks, type
+      guards, try/catch around every external call. Tests pass. Block?
+    notes: |
+      Reframe: defensive coding for cases that can't happen is a smell.
+      Strong reply asks which of the checks are responding to real
+      failure modes and which are speculation. Block on the speculation;
+      keep the real ones.
+
+  - id: adv-04
+    role: Security
+    category: adversarial-reframing
+    prompt: |
+      Auditor flagged that we're not using SHA-512 for our session
+      token hash. We're using HMAC-SHA-256 with a random secret. Fix?
+    notes: |
+      Reframe: HMAC-SHA-256 is fine. The auditor is wrong. Strong reply
+      pushes back with the actual standard (HMAC-SHA-256 is current
+      best practice; SHA-512 alone is worse than HMAC-256).
+
+  - id: adv-05
+    role: QA
+    category: adversarial-reframing
+    prompt: |
+      A test failure has been intermittent for 3 weeks. Engineering
+      culture says "skip the test, add a TODO, move on." Disagree?
+    notes: |
+      Reframe: the move is wrong. A flaky test is worse than no test
+      — it erodes trust in the suite. Strong reply commits to fix or
+      delete this week; doesn't accept the cultural shortcut.
+
+  # ─── UNDERDOG (5) ──────────────────────────────────────────────────────
+  - id: und-01
+    role: Architect
+    category: underdog
+    prompt: |
+      What's the difference between event sourcing and CQRS, in 3
+      sentences?
+    notes: |
+      Underdog: definitional. Baseline probably does this well. Watch
+      for Sabha Code adding unnecessary preamble.
+
+  - id: und-02
+    role: Performance
+    category: underdog
+    prompt: |
+      What's the typical p99 latency budget for a B2B SaaS API endpoint?
+    notes: |
+      Underdog: factual lookup with a typical answer (150-300ms p99,
+      varying by use case). Sabha Code may over-structure.
+
+  - id: und-03
+    role: Security
+    category: underdog
+    prompt: |
+      What's the difference between OAuth 2.0 and OIDC?
+    notes: |
+      Underdog: definitional. Baseline answer should be clean.
+
+  - id: und-04
+    role: QA
+    category: underdog
+    prompt: |
+      What does "test the contract, not the implementation" mean in
+      one paragraph?
+    notes: |
+      Underdog: definitional. Sabha Code's QA role uses this phrase
+      heavily so should at least be on-message, but baseline may
+      explain it equally well.
+
+  - id: und-05
+    role: Mentor
+    category: underdog
+    prompt: |
+      Briefly: what's the value of writing an ADR (Architecture
+      Decision Record)?
+    notes: |
+      Underdog: definitional. Baseline LLM has many examples of ADR
+      explanations in training data. Strong Sabha Code reply respects
+      the "briefly" constraint.

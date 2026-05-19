@@ -147,6 +147,21 @@ See [`docs/CUSTOMIZATION.md`](./docs/CUSTOMIZATION.md) for walkthroughs.
 
 ---
 
+## Does it actually work?
+
+A reproducible eval ships in [`evals/`](./evals/). 30 developer-shaped questions across 7 roles and 3 credibility-stress buckets (role-core / adversarial-reframing / underdog). Each question runs twice — no-system-prompt baseline vs Sabha Code charter loaded — and is judged by an LLM-as-judge using the **v3 sub-axis rubric** (decisiveness / tradeoff_named / length_discipline each decomposed into 5 binary sub-criteria, plus holistic concreteness and binary routing_present), plus pairwise preference. **Cross-model judge harness** supports `--judge-provider {anthropic,openai,google}` to defeat in-family bias.
+
+```bash
+pip install -r evals/requirements.txt
+export ANTHROPIC_API_KEY=sk-ant-...
+python evals/run_eval.py            # full n=30 run, ~$15-20, ~15 min
+python evals/run_eval.py --limit 3  # smoke first
+```
+
+Methodology adapted from [Sabha OS evals](https://github.com/rdmurugan/sabhaos/tree/main/evals), which currently report 48/50 pairwise (96%, Wilson 95% CI [86.5%, 98.9%]) on the C-suite-shaped protocol. Sabha Code's first run is pending; results land in [`evals/results/`](./evals/results/) when complete.
+
+See [`evals/README.md`](./evals/README.md) for the full methodology, the credibility-claim posture, and what the eval intentionally does *not* test yet.
+
 ## Compatibility
 
 - **GitHub Copilot in VS Code, JetBrains, Neovim, Visual Studio** — all surfaces that read `.github/copilot-instructions.md`
