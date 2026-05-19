@@ -129,15 +129,57 @@ Checkpoint-after-each-question means a partial run is never lost. Resume picks u
 
 ---
 
-## Results
+## Results — current run
 
-Once you've run the eval, results land in:
+**2026-05-18, n=30, Anthropic candidate + Anthropic judge, v3 rubric.**
 
-- `results/<date>.json` — machine-readable
+| Metric | Baseline | Sabha Code | Δ |
+|---|---:|---:|---:|
+| **Pairwise preference** | 2/30 | **28/30 (93.3%)** | Wilson 95% CI [78.7%, 98.2%] |
+| Rubric total (/20) | 12.33 | 17.07 | +4.74 |
+| decisiveness | 3.23 | 4.47 | +1.24 |
+| tradeoff_named | 2.50 | 3.50 | +1.00 |
+| concreteness | 3.50 | 4.23 | +0.73 |
+| routing_present | 0.00 | 1.00 | +1.00 |
+| length_discipline | 3.10 | 4.87 | +1.77 |
+
+Per-bucket:
+- **Role-core (n=20): 20/20 = 100%** — protocol works exactly where designed
+- Adversarial reframing (n=5): 4/5 = 80%
+- Underdog (n=5): 4/5 = 80%
+
+Per-role: Architect 6/6, Reviewer 4/4, Performance 5/5, Mentor 3/3, Tech Lead 2/2, Security 4/5, QA 4/5.
+
+### The 2 losses (documented for honesty)
+
+Both losses share a *rubric-wins-but-pairwise-loses* pattern. Sabha Code scored higher on the structured rubric in both cases, but the operator-judge preferred the alternative:
+
+- **`adv-04` (Security adversarial)** — auditor flagged SHA-512 vs HMAC-SHA-256. Sabha Code dismissed the auditor; baseline considered the alternative interpretation (bare SHA vs HMAC) and offered a compliance path. Judge preferred baseline's charity. *The protocol's discipline can become rigidity when the user's premise itself is ambiguous.*
+- **`und-04` (QA underdog)** — "explain test-the-contract in one paragraph." Sabha Code added routing-line meta-commentary; baseline gave the clean one-paragraph answer the question asked for. *Sabha Code over-structures lookup-shaped questions — exactly what the protocol's "skip for" rules say not to do.*
+
+Both losses point at the same architectural gap: the protocol enforces its shape too aggressively on questions where it shouldn't fire. Two ROADMAP-worthy fixes:
+1. Add a "charity-of-interpretation" rule to Security and any compliance-adjacent role: when the user reports an external flag, consider what the flag *might* be trying to say, not just whether it's literally correct.
+2. Strengthen the "skip for" enforcement for clearly-definitional questions — *"explain X briefly"* / *"what does Y mean"* should skip the routing line.
+
+### Comparison to Sabha OS
+
+| | Sabha OS (n=50) | Sabha Code (n=30) |
+|---|---:|---:|
+| Pairwise | 48/50 (96%) | 28/30 (93.3%) |
+| Wilson 95% CI | [86.5%, 98.9%] | [78.7%, 98.2%] |
+| Domain | C-suite / operator | Engineering |
+
+**Both CIs overlap substantially.** The directional claim *"the protocol shape generalizes from operator to engineer"* is supported. The magnitude can't yet be distinguished at these sample sizes — both could be 90-96%. Larger N or a cross-model judge run would narrow further.
+
+### Future runs
+
+A run is bundled with a stable basename (default: today's ISO date; override with `--out-name`). Files:
+
+- `results/<date>.json` — machine-readable, full reply text, sub-criteria, judge rationales
 - `results/<date>.md` — rendered report
 - `results/latest.md` — always points at the most recent run
 
-A run is bundled with a stable basename (default: today's ISO date; override with `--out-name`).
+Cross-model judge runs (when an OpenAI or Google API key is available) are the single highest-leverage next move — they defeat ~80% of remaining in-family-bias critique.
 
 ---
 

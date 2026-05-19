@@ -1,0 +1,275 @@
+{
+  "meta": {
+    "run_date": "2026-05-18",
+    "candidate_model": "claude-sonnet-4-6",
+    "judge_provider": "anthropic",
+    "judge_model": "claude-opus-4-7",
+    "rubric_version": "v3",
+    "project": "sabha-code"
+  },
+  "summary": {
+    "per_condition": {
+      "baseline": {
+        "decisiveness": 3.0,
+        "tradeoff_named": 3.33,
+        "concreteness": 4.67,
+        "routing_present": 0.0,
+        "length_discipline": 4.0,
+        "total": 15.0
+      },
+      "sabha_code": {
+        "decisiveness": 5.0,
+        "tradeoff_named": 4.33,
+        "concreteness": 5.0,
+        "routing_present": 1.0,
+        "length_discipline": 5.0,
+        "total": 19.33
+      }
+    },
+    "pairwise": {
+      "sabha_code": 3,
+      "baseline": 0,
+      "tie": 0
+    },
+    "n": 3
+  },
+  "records": [
+    {
+      "id": "arch-01",
+      "role": "Architect",
+      "category": "system-design",
+      "role_instructions_loaded": true,
+      "prompt": "We're building a B2B SaaS that handles ~5K req/s sustained, ~20K\npeak. Should we go with a single Postgres + read replicas, or\nseparate write/read services with a message bus between them?\n",
+      "replies": {
+        "baseline": "# Database Architecture Decision: Postgres vs. CQRS/Event-Driven\n\nLet me give you a direct answer first, then show my reasoning.\n\n## TL;DR Recommendation\n\n**Start with Postgres + read replicas. Build toward CQRS only if you hit specific, measurable pain points.**\n\n5K-20K req/s is well within Postgres's capability if your schema and application layer are done right.\n\n---\n\n## The Numbers First\n\n```\n5,000 req/s sustained\n\u251c\u2500\u2500 Assuming 70/30 read/write split (typical B2B)\n\u251c\u2500\u2500 Writes: ~1,500/s  \u2192 Very manageable for Postgres\n\u2514\u2500\u2500 Reads:  ~3,500/s  \u2192 Easily handled by 2-3 read replicas\n\n20,000 req/s peak (4x multiplier)\n\u251c\u2500\u2500 Writes: ~6,000/s  \u2192 Still fine with connection pooling\n\u2514\u2500\u2500 Reads:  ~14,000/s \u2192 3-4 replicas + caching handles this\n```\n\nPostgres with proper tuning handles **50K+ TPS** on commodity hardware. Your load is not the problem.\n\n---\n\n## Option A: Postgres + Read Replicas\n\n```\n                    \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n                    \u2502    Load Balancer     \u2502\n                    \u2502   (HAProxy/Nginx)    \u2502\n                    \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n                               \u2502\n              \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n              \u2502                                 \u2502\n    \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u25bc\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510          \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u25bc\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n    \u2502   Write Service    \u2502          \u2502    Read Service      \u2502\n    \u2502  (your app layer)  \u2502          \u2502   (your app layer)   \u2502\n    \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518          \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n              \u2502                                \u2502\n    \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u25bc\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510          \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u25bc\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n    \u2502  Primary Postgres  \u2502\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u25b6  Read Replica (x3)  \u2502\n    \u2502   + PgBouncer      \u2502 streaming \u2502   + PgBouncer       \u2502\n    \u2502                    \u2502 replication\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n    \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n              \u2502\n    \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u25bc\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n    \u2502   Redis Cache      \u2502  \u2190 Absorbs repetitive reads\n    \u2502   (read-through)   \u2502\n    \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n```\n\n### What you actually need to get this right\n\n```sql\n-- 1. Connection pooling is non-negotiable at your scale\n-- PgBouncer config (not optional)\n[pgbouncer]\npool_mode = transaction        -- NOT session mode\nmax_client_conn = 10000\ndefault_pool_size = 25         -- per database user\nserver_pool_size = 25\n\n-- 2. Your indexes will make or break you\n-- Find your slow queries FIRST\nSELECT query, calls, mean_exec_time, stddev_exec_time\nFROM pg_stat_statements\nORDER BY mean_exec_time DESC\nLIMIT 20;\n\n-- 3. Partition large tables early\nCREATE TABLE events (\n    id          BIGSERIAL,\n    tenant_id   UUID NOT NULL,\n    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),\n    payload     JSONB\n) PARTITION BY RANGE (created_at);\n\n-- Monthly partitions\nCREATE TABLE events_2024_01 \n    PARTITION OF events\n    FOR VALUES FROM ('2024-01-01') TO ('2024-02-01');\n```\n\n```python\n# Application-level read/write splitting\n# Simple, transparent, no message bus needed\n\nimport asyncpg\nfrom contextlib import asynccontextmanager\n\nclass DatabaseRouter:\n    def __init__(self):\n        self.write_pool = None  # Primary\n        self.read_pools = []    # Replicas, round-robin\n        self._read_index = 0\n    \n    async def initialize(self):\n        self.write_pool = await asyncpg.create_pool(\n            dsn=PRIMARY_DSN,\n            min_size=10,\n            max_size=50,\n            command_timeout=30\n        )\n        for dsn in REPLICA_DSNS:\n            pool = await asyncpg.create_pool(\n                dsn=dsn,\n                min_size=10, \n                max_size=100,  # Reads get more connections\n                command_timeout=10\n            )\n            self.read_pools.append(pool)\n    \n    @asynccontextmanager\n    async def write_conn(self):\n        async with self.write_pool.acquire() as conn:\n            yield conn\n    \n    @asynccontextmanager\n    async def read_conn(self, replica_lag_ok: bool = True):\n        \"\"\"\n        replica_lag_ok=False forces primary for \n        read-your-own-writes consistency\n        \"\"\"\n        if not replica_lag_ok or not self.read_pools:\n            async with self.write_pool.acquire() as conn:\n                yield conn\n            return\n            \n        # Round-robin across replicas\n        pool = self.read_pools[self._read_index % len(self.read_pools)]\n        self._read_index += 1\n        async with pool.acquire() as conn:\n            yield conn\n\n# Usage\nasync def get_order(order_id: str, user_just_created: bool = False):\n    async with db.read_conn(replica_lag_ok=not user_just_created) as conn:\n        return await conn.fetchrow(\n            \"SELECT * FROM orders WHERE id = $1\", order_id\n        )\n\nasync def create_order(data: dict):\n    async with db.write_conn() as conn:\n        return await conn.fetchrow(\n            \"INSERT INTO orders (...) VALUES (...) RETURNING *\",\n            *data.values()\n        )\n```\n\n---\n\n## Option B: CQRS + Message Bus\n\n```\n\u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n\u2502                    API Gateway                          \u2502\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n                \u2502                 \u2502\n    \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u25bc\u2500\u2500\u2500\u2500\u2500\u2500\u2510  \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u25bc\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n    \u2502  Command Service \u2502  \u2502  Query Service   \u2502\n    \u2502  (writes only)   \u2502  \u2502  (reads only)    \u2502\n    \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2518  \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n                \u2502                \u2502\n    \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u25bc\u2500\u2500\u2500\u2500\u2500\u2500\u2510  \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u25bc\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n    \u2502  Write DB        \u2502  \u2502  Read Store      \u2502\n    \u2502  (Postgres)      \u2502  \u2502  (Postgres/ES/   \u2502\n    \u2502                  \u2502  \u2502   Mongo/Redis)   \u2502\n    \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2518  \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n                \u2502                \u25b2\n    \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u25bc\u2500\u2500\u2500\u2500\u2500\u2500\u2510         \u2502\n    \u2502   Message Bus    \u2502\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n    \u2502  (Kafka/Pulsar)  \u2502  eventual consistency\n    \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n```\n\n### The real cost of this approach\n\n| Concern | What you're actually signing up for |\n|---|---|\n| **Eventual consistency** | Every read is potentially stale. You must handle this in UX and business logic everywhere |\n| **Operational complexity** | Kafka cluster, schema registry, consumer groups, dead letter queues, reprocessing |\n| **Debugging** | A write \"worked\" but the read side never updated. Why? Good luck. |\n| **Team expertise** | You need people who know distributed systems deeply |\n| **Testing** | Integration tests are now end-to-end async. Your test suite complexity doubles |\n| **Latency** | Commands are fire-and-forget. User submits order \u2192 polling or WebSocket to confirm |\n\n---\n\n## When CQRS Actually Makes Sense\n\n```\n\u2705 Use CQRS when you have:\n\n1. Wildly different read/write models",
+        "sabha_code": "Routing: Architect.\n\n---\n\n**Go with single Postgres + read replicas. Not the message bus.**\n\nAt 5K sustained / 20K peak, a well-tuned Postgres with 2\u20133 read replicas handles this without drama. The message bus architecture buys you write scalability you don't need yet, and costs you 3\u20136 months of infra work, a new failure mode (replication lag visible to users), and operational complexity your team will be debugging at 2am.\n\n**The decision:** One Postgres primary, 2 read replicas, pgBouncer for connection pooling. Route writes to primary, reads to replicas via your app layer (or a read-replica-aware ORM pool).\n\n**What you give up:** Horizontal write scalability beyond ~50K req/s sustained (rough Postgres ceiling for OLTP; actual ceiling depends heavily on write shape). If you hit that, you'll need the bus anyway \u2014 but you'll also have the revenue to justify it.\n\n**What you gain:** No eventual consistency bugs. No message bus ops. No distributed transaction headaches. Simpler deploys. A team that sleeps.\n\n**Assumptions I'm making:**\n- Your workload is OLTP-shaped (many small reads/writes), not OLAP\n- Reads outnumber writes significantly (typical for B2B SaaS)\n- You're not doing event sourcing or have a specific audit/stream requirement that mandates a bus\n\n**Revisit when:** Sustained writes saturate the primary (>70% CPU for >30 min sustained, or replication lag consistently >500ms). That's your signal to introduce CQRS + a bus \u2014 not before.\n\n---\n\n**Tuning checklist before you declare Postgres insufficient:**\n- pgBouncer in transaction mode (connection count is usually the first bottleneck)\n- `max_connections`, `work_mem`, `shared_buffers` sized to your instance\n- Indexes on every foreign key and every column in a `WHERE` clause\n- `EXPLAIN ANALYZE` on your top-10 queries by frequency \u00d7 cost\n\nWant me to write this up as an ADR?"
+      },
+      "scores": {
+        "baseline": {
+          "decisiveness": 4,
+          "tradeoff_named": 3,
+          "concreteness": 5,
+          "routing_present": 0,
+          "length_discipline": 4,
+          "total": 16,
+          "rationale": "Strong, concrete recommendation with rejected alternative, but reply is truncated mid-section, lacks explicit time horizon and quantified tradeoff costs, and opens with a small windup phrase.",
+          "decisiveness_sub": {
+            "d1_made_clear_recommendation": 1,
+            "d2_stated_confidence_or_conditions": 1,
+            "d3_named_alternative_rejected": 1,
+            "d4_committed_specific_next_move": 0,
+            "d5_avoided_hedging_language": 1
+          },
+          "tradeoff_named_sub": {
+            "t1_named_what_is_given_up": 1,
+            "t2_quantified_the_cost": 0,
+            "t3_named_who_is_affected": 1,
+            "t4_stated_time_horizon": 0,
+            "t5_gave_reasoning_to_accept": 1
+          },
+          "length_discipline_sub": {
+            "l1_no_three_paragraph_windup": 1,
+            "l2_no_padding_phrases": 0,
+            "l3_no_unnecessary_disclaimers": 1,
+            "l4_no_redundancy": 1,
+            "l5_every_paragraph_advances": 1
+          },
+          "rubric_version": "v3"
+        },
+        "sabha_code": {
+          "decisiveness": 5,
+          "tradeoff_named": 5,
+          "concreteness": 5,
+          "routing_present": 1,
+          "length_discipline": 5,
+          "total": 20,
+          "rationale": "Strong across all axes: clear committed recommendation, quantified tradeoffs with conditions to revisit, concrete tuning specifics, and tight prose without padding.",
+          "decisiveness_sub": {
+            "d1_made_clear_recommendation": 1,
+            "d2_stated_confidence_or_conditions": 1,
+            "d3_named_alternative_rejected": 1,
+            "d4_committed_specific_next_move": 1,
+            "d5_avoided_hedging_language": 1
+          },
+          "tradeoff_named_sub": {
+            "t1_named_what_is_given_up": 1,
+            "t2_quantified_the_cost": 1,
+            "t3_named_who_is_affected": 1,
+            "t4_stated_time_horizon": 1,
+            "t5_gave_reasoning_to_accept": 1
+          },
+          "length_discipline_sub": {
+            "l1_no_three_paragraph_windup": 1,
+            "l2_no_padding_phrases": 1,
+            "l3_no_unnecessary_disclaimers": 1,
+            "l4_no_redundancy": 1,
+            "l5_every_paragraph_advances": 1
+          },
+          "rubric_version": "v3"
+        }
+      },
+      "pairwise": {
+        "winner": "sabha_code",
+        "rationale": "Reply A is decisive, concise, includes specific revisit triggers and a tuning checklist without padding, while Reply B is verbose, gets truncated, and buries the recommendation in ASCII diagrams and code."
+      }
+    },
+    {
+      "id": "arch-02",
+      "role": "Architect",
+      "category": "build-vs-buy",
+      "role_instructions_loaded": true,
+      "prompt": "We need a feature-flag system. Three options: (a) build it ourselves\n(~2 weeks), (b) LaunchDarkly ($), (c) Unleash (open-source, self-host).\nStack: TypeScript backend, Postgres, Vercel + Render. Team of 4.\n",
+      "replies": {
+        "baseline": "# Feature Flag System Decision\n\n## Quick Assessment\n\n| Criterion | Build It | LaunchDarkly | Unleash |\n|-----------|----------|--------------|---------|\n| Time to ship | ~2 weeks | ~2 hours | ~1 day |\n| Ongoing maintenance | High | None | Medium |\n| Cost (est.) | Dev time only | $100-400/mo | Hosting ~$20/mo |\n| Targeting rules | You build it | Excellent | Good |\n| Real-time updates | You build it | Yes | Yes |\n| Audit log | You build it | Yes | Yes |\n| TypeScript SDK | You build it | \u2705 Official | \u2705 Official |\n\n---\n\n## My Recommendation: **Unleash**\n\nHere's why, for your specific stack:\n\n```\nTeam of 4 + Vercel + Render + Postgres =\n  - Don't waste 2 weeks reinventing this\n  - LaunchDarkly pricing scales badly at your stage\n  - Unleash runs cleanly on Render, uses Postgres natively\n```\n\n---\n\n## The Case Against Each Alternative\n\n### \u274c Build It Yourself\n\nThe obvious problems aren't the obvious ones:\n\n```typescript\n// You'll start with this (day 1)\nconst flags = { newCheckout: true };\n\n// Then you'll need targeting (day 3)\n// Then you'll need percentage rollouts (day 5)\n// Then you'll need audit logs (day 8)\n// Then a kill switch UI (day 10)\n// Then cache invalidation (day 12)\n// Then you'll need it to work on the Edge (day 14)\n// Then you'll still be building it (day 20)\n```\n\n**The real cost is not 2 weeks \u2014 it's forever.**\nSomeone on your 4-person team now owns this system.\n\n### \u274c LaunchDarkly\n\nGood product. Genuinely hard to recommend at early stage:\n- Pricing is per-seat + per-MAU, gets expensive fast\n- You're paying for enterprise features you won't use\n- Vendor lock-in on a non-critical system\n- Budget pressure will make you *hesitate to use flags* \u2014 defeating the purpose\n\n---\n\n## Concrete Setup: Unleash on Render + Vercel\n\n### 1. Deploy Unleash Server on Render\n\n```yaml\n# render.yaml\nservices:\n  - type: web\n    name: unleash\n    env: docker\n    dockerfilePath: ./Dockerfile.unleash  # or use their official image\n    envVars:\n      - key: DATABASE_URL\n        fromDatabase:\n          name: unleash-db\n          property: connectionString\n      - key: INIT_ADMIN_API_TOKENS\n        value: your-secret-token\n\ndatabases:\n  - name: unleash-db\n    plan: starter  # $7/mo, fine to start\n```\n\nOr just use Unleash's official Docker image directly on Render \u2014 no custom Dockerfile needed:\n\n```\nImage: unleashorg/unleash-server:latest\n```\n\n### 2. TypeScript Backend Integration (Render service)\n\n```typescript\n// lib/featureFlags.ts\nimport { initialize, isEnabled, getVariant } from 'unleash-client';\n\nconst unleash = initialize({\n  url: process.env.UNLEASH_URL!,\n  appName: 'my-backend',\n  customHeaders: {\n    Authorization: process.env.UNLEASH_API_TOKEN!,\n  },\n  // Polls every 15s by default \u2014 fine for most cases\n});\n\n// Wait for initial flag sync before handling requests\nexport async function waitForFlags(): Promise<void> {\n  return new Promise((resolve) => {\n    unleash.on('synchronized', resolve);\n    // Don't hang forever\n    setTimeout(resolve, 3000);\n  });\n}\n\n// Typed wrapper \u2014 don't scatter raw SDK calls everywhere\nexport const flags = {\n  newCheckout: (userId?: string) =>\n    isEnabled('new-checkout', userId ? { userId } : undefined),\n\n  betaSearch: (userId?: string) =>\n    isEnabled('beta-search', userId ? { userId } : undefined),\n\n  checkoutVariant: (userId: string) =>\n    getVariant('checkout-experiment', { userId }),\n} as const;\n```\n\n```typescript\n// server.ts\nimport { waitForFlags } from './lib/featureFlags';\n\nasync function start() {\n  await waitForFlags(); // Flags ready before first request\n  app.listen(3000);\n}\n```\n\n### 3. Vercel Edge / API Routes\n\n```typescript\n// The Node SDK won't work on Edge runtime \u2014 use HTTP API directly\n// lib/featureFlags.edge.ts\n\ninterface FlagContext {\n  userId?: string;\n  sessionId?: string;\n}\n\n// Cache at the request level (or use Vercel KV for cross-request caching)\nasync function getFlagsForContext(context: FlagContext) {\n  const res = await fetch(\n    `${process.env.UNLEASH_URL}/api/client/features`,\n    {\n      headers: {\n        Authorization: process.env.UNLEASH_API_TOKEN!,\n      },\n      // Vercel fetch cache \u2014 revalidate every 30s\n      next: { revalidate: 30 },\n    }\n  );\n\n  const { features } = await res.json();\n  return features;\n}\n\nexport async function isFlagEnabled(\n  flagName: string,\n  context: FlagContext\n): Promise<boolean> {\n  try {\n    const features = await getFlagsForContext(context);\n    const flag = features.find((f: any) => f.name === flagName);\n    return flag?.enabled ?? false; // Fail closed\n  } catch {\n    return false; // Always fail closed on errors\n  }\n}\n```\n\n### 4. Usage Pattern in API Routes\n\n```typescript\n// pages/api/checkout.ts  (or app/api/checkout/route.ts)\nimport { flags } from '../../lib/featureFlags';\n\nexport async function POST(req: Request) {\n  const { userId } = await getSession(req);\n\n  if (flags.newCheckout(userId)) {\n    return newCheckoutHandler(req);\n  }\n\n  return legacyCheckoutHandler(req);\n}\n```\n\n---\n\n## Operational Guardrails\n\n### Flag Naming Convention (agree on this day 1)\n\n```\n{area}-{description}-{type}\n\nnew-checkout-flow-rollout      \u2705\nbeta-search-experiment         \u2705\ndisable-email-notifications    \u2705 (kill switch)\n\nnewcheckout                    \u274c (unclear)\nflag1                          \u274c (obviously bad)\n```\n\n### Flag Lifecycle \u2014 Don't Skip This\n\n```typescript\n// Add to your PR template:\n/**\n * Feature: New Checkout Flow\n * Flag: new-checkout-flow-rollout\n * Owner: @alice\n * Cleanup by: 2024-03-01  <-- hard date, not \"when stable\"\n *\n * Rollout:\n *  [ ] 5%  internal users\n *  [ ] 20% beta users\n *  [ ] 100% \u2014 flag removal PR due\n */\n```\n\nFlags that never get cleaned up become **hidden conditionals** in your codebase.\nSchedule the removal PR when you create the flag.\n\n### What to Put Behind Flags (and What Not To)\n\n```\nGood candidates:\n\u2705 UI redesigns during gradual rollout\n\u2705 New algorithms (ranking, pricing, search)\n\u2705 Third-party integrations (can kill-switch if they go down)\n\u2705 Expensive features (rate-limit by enabling for paid users only)\n\u2705 Anything you're not confident about\n\nBad candidates:\n\u274c Security controls (these should always be on)\n\u274c Bug fixes (just ship them)\n\u274c Permanent configuration (use env vars instead)\n```\n\n---\n\n## Decision Summary\n\n```\nWeek 1:  Spin up Unleash on Render         (~3 hours)\nWeek 1:  Add SDK to backend, write wrapper (~2 hours)\nWeek 1:  Add edge-compatible fetch client  (~1 hour)\nWeek 1:  Document naming + lifecycle rules (~1 hour)\n\nTotal: ~1 day\nRemaining 9 days",
+        "sabha_code": "Routing: Architect.\n\n---\n\n**Use Unleash.**\n\nSelf-host on Render (it's a single Docker container). Connect to your existing Postgres. SDK is first-class TypeScript. Done in a day, not two weeks.\n\n**What you give up vs LaunchDarkly:** enterprise features (audit trails, approvals workflow, SSO, SLAs). Irrelevant at your scale. Revisit when compliance or enterprise sales requires it.\n\n**What you give up vs build-it-yourself:** full control, zero external dependency. What you gain: flag targeting, gradual rollouts, kill switches, a UI, and SDKs \u2014 none of which you'll finish in two weeks anyway. \"~2 weeks\" is optimistic; evaluation + edge cases always stretch it.\n\n---\n\n**Setup sketch:**\n\n```\nRender service: unleash-server (Docker: unleashorg/unleash-server)\nEnv vars: DATABASE_URL \u2192 your existing Postgres\nSDK: @unleash/node (works fine in TypeScript backends)\n```\n\n```typescript\nimport { initialize } from 'unleash-client';\n\nconst unleash = initialize({\n  url: process.env.UNLEASH_URL!,        // your Render service URL\n  customHeaders: { Authorization: process.env.UNLEASH_API_KEY! },\n  appName: 'your-app',\n});\n\n// Usage\nif (unleash.isEnabled('my-feature', { userId: ctx.user.id })) {\n  // ...\n}\n```\n\nFlags persist in Postgres. No new database.\n\n---\n\n**The one real risk:** you now own uptime for the flag server. Mitigate with a fallback default (`unleash.isEnabled` returns `false` on connection loss \u2014 acceptable for most flags; document exceptions explicitly).\n\n---\n\nWant me to write this up as an ADR?"
+      },
+      "scores": {
+        "baseline": {
+          "decisiveness": 4,
+          "tradeoff_named": 5,
+          "concreteness": 5,
+          "routing_present": 0,
+          "length_discipline": 4,
+          "total": 18,
+          "rationale": "Strong concrete recommendation with code, but lacks explicit confidence/flip conditions, no routing line, and some redundancy between the comparison table, decision summary, and case-against sections.",
+          "decisiveness_sub": {
+            "d1_made_clear_recommendation": 1,
+            "d2_stated_confidence_or_conditions": 0,
+            "d3_named_alternative_rejected": 1,
+            "d4_committed_specific_next_move": 1,
+            "d5_avoided_hedging_language": 1
+          },
+          "tradeoff_named_sub": {
+            "t1_named_what_is_given_up": 1,
+            "t2_quantified_the_cost": 1,
+            "t3_named_who_is_affected": 1,
+            "t4_stated_time_horizon": 1,
+            "t5_gave_reasoning_to_accept": 1
+          },
+          "length_discipline_sub": {
+            "l1_no_three_paragraph_windup": 1,
+            "l2_no_padding_phrases": 1,
+            "l3_no_unnecessary_disclaimers": 1,
+            "l4_no_redundancy": 0,
+            "l5_every_paragraph_advances": 1
+          },
+          "rubric_version": "v3"
+        },
+        "sabha_code": {
+          "decisiveness": 5,
+          "tradeoff_named": 3,
+          "concreteness": 5,
+          "routing_present": 1,
+          "length_discipline": 5,
+          "total": 18,
+          "rationale": "Lost points on tradeoff sub-axis for not quantifying costs in dollars/hours and not naming a specific affected actor or team.",
+          "decisiveness_sub": {
+            "d1_made_clear_recommendation": 1,
+            "d2_stated_confidence_or_conditions": 1,
+            "d3_named_alternative_rejected": 1,
+            "d4_committed_specific_next_move": 1,
+            "d5_avoided_hedging_language": 1
+          },
+          "tradeoff_named_sub": {
+            "t1_named_what_is_given_up": 1,
+            "t2_quantified_the_cost": 0,
+            "t3_named_who_is_affected": 0,
+            "t4_stated_time_horizon": 1,
+            "t5_gave_reasoning_to_accept": 1
+          },
+          "length_discipline_sub": {
+            "l1_no_three_paragraph_windup": 1,
+            "l2_no_padding_phrases": 1,
+            "l3_no_unnecessary_disclaimers": 1,
+            "l4_no_redundancy": 1,
+            "l5_every_paragraph_advances": 1
+          },
+          "rubric_version": "v3"
+        }
+      },
+      "pairwise": {
+        "winner": "sabha_code",
+        "rationale": "A delivers a decisive recommendation with the key tradeoffs, the one real operational risk, and just enough setup code; B is comprehensive but bloated with padding a busy operator would skim past."
+      }
+    },
+    {
+      "id": "arch-03",
+      "role": "Architect",
+      "category": "data-model",
+      "role_instructions_loaded": true,
+      "prompt": "Designing a multi-tenant SaaS. Should we use schema-per-tenant,\nrow-level tenant_id, or separate databases per tenant?\n",
+      "replies": {
+        "baseline": "# Multi-Tenant SaaS Database Architecture\n\n## The Three Approaches at a Glance\n\n```\n\u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n\u2502                    ISOLATION vs COST TRADEOFF                   \u2502\n\u2502                                                                 \u2502\n\u2502  Shared DB        Schema per        Separate DB                 \u2502\n\u2502  Row-level   \u2192    Tenant       \u2192    per Tenant                  \u2502\n\u2502                                                                 \u2502\n\u2502  Low Cost         Medium Cost       High Cost                   \u2502\n\u2502  Low Isolation    Medium Isolation  High Isolation              \u2502\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n```\n\n---\n\n## Option 1: Row-Level `tenant_id` (Shared Schema)\n\n```sql\n-- Every table carries tenant_id\nCREATE TABLE orders (\n  id          UUID PRIMARY KEY,\n  tenant_id   UUID NOT NULL,           -- mandatory on every table\n  customer_id UUID NOT NULL,\n  total       DECIMAL(10,2),\n  created_at  TIMESTAMPTZ DEFAULT NOW(),\n\n  FOREIGN KEY (tenant_id) REFERENCES tenants(id)\n);\n\n-- Composite indexes are critical\nCREATE INDEX idx_orders_tenant_customer \n  ON orders (tenant_id, customer_id);\n\nCREATE INDEX idx_orders_tenant_created \n  ON orders (tenant_id, created_at DESC);\n```\n\n### The Leak Problem \u2014 This WILL happen without guards\n\n```python\n# \u274c DANGEROUS - Classic tenant data leak\nclass OrderService:\n    def get_order(self, order_id: str):\n        return db.query(\n            \"SELECT * FROM orders WHERE id = %s\", \n            order_id\n        )  # Forgot tenant_id filter!\n\n# \u2705 SAFE - Enforce at the base layer\nclass TenantAwareRepository:\n    def __init__(self, tenant_id: str):\n        self.tenant_id = tenant_id\n    \n    def query(self, sql: str, params: tuple):\n        # Automatically append tenant filter\n        tenant_sql = f\"\"\"\n            WITH tenant_ctx AS (\n                SELECT {self.tenant_id!r}::uuid AS tid\n            )\n            SELECT q.* FROM ({sql}) q\n            JOIN tenant_ctx ON q.tenant_id = tenant_ctx.tid\n        \"\"\"\n        return db.execute(tenant_sql, params)\n\n# Even better - PostgreSQL Row Level Security\n-- Never bypassed at application layer\nCREATE POLICY tenant_isolation ON orders\n  USING (tenant_id = current_setting('app.tenant_id')::uuid);\n\nALTER TABLE orders ENABLE ROW LEVEL SECURITY;\n\n-- Set at connection time\nSET app.tenant_id = 'tenant-uuid-here';\n```\n\n### Pros / Cons\n```\n\u2705 Simple operations (single DB backup, migrate, monitor)\n\u2705 Best resource utilization / lowest cost\n\u2705 Easy cross-tenant analytics (for your ops team)\n\u2705 New tenant = insert a row, not provision infrastructure\n\n\u274c Weakest isolation - bugs leak data\n\u274c Noisy neighbor (one tenant's query hurts everyone)\n\u274c Compliance risk (GDPR deletion = complex queries, not drop DB)\n\u274c Schema changes affect all tenants simultaneously\n\u274c Cannot offer tenant-specific customizations\n```\n\n---\n\n## Option 2: Schema-per-Tenant\n\n```python\n# Connection routing by tenant\nclass SchemaRouter:\n    def get_connection(self, tenant_slug: str):\n        conn = get_db_connection()\n        # Switch schema context - data is physically separate\n        conn.execute(f\"SET search_path TO tenant_{tenant_slug}, public\")\n        return conn\n\n# Provisioning a new tenant\nclass TenantProvisioner:\n    def create_tenant(self, tenant: Tenant):\n        schema_name = f\"tenant_{tenant.slug}\"\n        \n        with db.transaction():\n            # 1. Create isolated schema\n            db.execute(f\"CREATE SCHEMA {schema_name}\")\n            \n            # 2. Run migrations in new schema\n            db.execute(f\"SET search_path TO {schema_name}\")\n            run_migrations()\n            \n            # 3. Register tenant\n            db.execute(\n                \"INSERT INTO public.tenants (id, slug, schema) VALUES (%s, %s, %s)\",\n                [tenant.id, tenant.slug, schema_name]\n            )\n```\n\n```sql\n-- Each tenant gets identical structure, isolated data\n-- tenant_acme.orders  \u2190 Acme Corp's data\n-- tenant_globex.orders \u2190 Globex Corp's data\n\n-- No tenant_id columns needed within a schema\nCREATE TABLE tenant_acme.orders (\n  id          UUID PRIMARY KEY,\n  customer_id UUID NOT NULL,  -- cleaner!\n  total       DECIMAL(10,2)\n);\n```\n\n### The Migration Problem\n\n```python\n# \u274c Painful: Must migrate ALL schemas\nclass SchemaMigrationRunner:\n    def run_migration(self, migration_sql: str):\n        tenants = db.query(\"SELECT schema FROM public.tenants\")\n        failed = []\n        \n        for tenant in tenants:\n            try:\n                db.execute(f\"SET search_path TO {tenant.schema}\")\n                db.execute(migration_sql)\n            except Exception as e:\n                failed.append((tenant, e))\n                # Schema drift! Now tenant_a has new column, tenant_b doesn't\n        \n        if failed:\n            raise MigrationPartialFailureError(failed)\n            # Your Saturday is ruined\n\n# \u2705 Better: Track schema versions per tenant\nCREATE TABLE public.schema_versions (\n    tenant_id   UUID,\n    version     INTEGER,\n    applied_at  TIMESTAMPTZ,\n    PRIMARY KEY (tenant_id, version)\n);\n```\n\n### Pros / Cons\n```\n\u2705 Strong isolation without separate DB overhead\n\u2705 Easy per-tenant backup/restore (pg_dump -n schema_name)\n\u2705 GDPR deletion = DROP SCHEMA (fast, clean)\n\u2705 Per-tenant customizations possible (add columns)\n\u2705 No accidental cross-tenant queries\n\n\u274c Schema drift becomes a real problem at scale\n\u274c PostgreSQL: ~100s of schemas OK, 1000s gets painful\n\u274c Cross-tenant reporting requires dynamic SQL or FDW\n\u274c Migration tooling needs custom work (Flyway/Liquibase struggle)\n\u274c Connection pooling complexity (PgBouncer per schema)\n```\n\n---\n\n## Option 3: Separate Database per Tenant\n\n```python\n# Infrastructure-as-code per tenant\nclass TenantDatabaseProvisioner:\n    def provision(self, tenant: Tenant):\n        # Could be RDS instance, Cloud SQL, PlanetScale branch...\n        db_config = {\n            \"host\": f\"{tenant.slug}.db.yourapp.com\",\n            \"database\": tenant.slug,\n            \"credentials\": generate_credentials(tenant)\n        }\n        \n        # Store connection config (encrypted)\n        vault.store(\n            f\"tenants/{tenant.id}/db_config\",\n            db_config\n        )\n        \n        # Run initial migrations\n        tenant_db = connect(db_config)\n        run_migrations(tenant_db)\n\nclass TenantConnectionPool:\n    def __init__(self):\n        self._pools: dict[str, ConnectionPool] = {}\n    \n    def get(self, tenant_id: str) -> ConnectionPool:\n        if tenant_id not in self._pools:\n            config = vault.get(f\"tenants/{tenant_id}/db_config\")\n            self._pools[tenant_id] = ConnectionPool(\n                config,\n                min_connections=2,\n                max_connections=20\n            )\n        return self._pools[tenant_id]\n```\n\n### Pros / Cons\n```\n\u2705 Maximum isolation - impossible to cross-contaminate\n\u2705 Tenant on dedicated hardware (compliance, enterprise sales)\n\u2705 Independent scaling per tenant\n\u2705 Clean GDPR: drop database\n\u2705 Customer can have DB in their region/cloud\n\u2705 Zero noisy neighbor problems\n\n\u274c Operationally expensive (1000 tenants = 1000 DBs to manage)",
+        "sabha_code": "Routing: **Architect**.\n\n---\n\n## Recommendation: Row-level `tenant_id` to start. Schema-per-tenant if you need hard isolation guarantees.\n\n**Do not use separate databases.** The ops cost (connection pooling, migration coordination, backup management) compounds fast and almost never pays off unless you have contractual data-residency requirements.\n\n---\n\n### Decision matrix\n\n| Approach | Isolation | Ops cost | Migration cost | Pooling | Suits |\n|---|---|---|---|---|---|\n| `tenant_id` row-level | Low\u2013medium | Low | Single migration | Easy | Default |\n| Schema-per-tenant | Medium\u2013high | Medium | Per-schema rollout | Requires pgBouncer | Compliance-adjacent |\n| DB-per-tenant | High | High | Per-DB rollout | Very hard | Contractual data residency |\n\n---\n\n### Row-level `tenant_id`\n\n**Do this unless you have a reason not to.**\n\n- Add `tenant_id UUID NOT NULL` to every table.\n- Enforce at the ORM layer (always scope queries: `WHERE tenant_id = ?`).\n- Add Postgres [Row Security Policies](https://www.postgresql.org/docs/current/ddl-rowsecurity.html) (RLS) as a second line of defence \u2014 one missed scope in application code shouldn't leak data.\n- Index: `CREATE INDEX ON orders (tenant_id, created_at)` \u2014 compound, tenant first.\n\n**You lose:** hard schema isolation. A bug in your ORM layer can leak rows across tenants. RLS mitigates this materially.\n\n**You gain:** simple ops, one migration path, easy analytics across tenants, standard connection pooling.\n\n---\n\n### Schema-per-tenant\n\nMove here if:\n- You have enterprise customers asking for *\"our data is isolated\"* (even if they don't legally require it)\n- You need per-tenant schema customisation (extra columns, different constraints)\n- You're on Postgres and can afford the migration orchestration\n\n**You lose:** simplicity. Migrations now mean `SET search_path = tenant_<id>; ALTER TABLE ...` run N times. You need a migration runner that iterates tenants. Tools like [Flyway](https://flywaydb.org/) or [sqitch](https://sqitch.org/) can do this; you'll still write the orchestration.\n\n**You gain:** genuine schema isolation. A `SELECT *` from the wrong schema returns nothing.\n\n---\n\n### The architecture rule\n\nWhatever isolation model you pick, **enforce it at two layers**:\n1. Application layer \u2014 always scope by tenant before the query leaves the service.\n2. Database layer \u2014 RLS (row-level) or separate search paths (schema-level) as the hard stop.\n\nSingle-layer enforcement fails under pressure: a new engineer writes a raw query, a bug bypasses the ORM. Two layers means one failure is recoverable.\n\n---\n\n### Revisit when\n\n- You sign a customer with a contractual data-residency or jurisdiction clause \u2192 reconsider DB-per-tenant for *that customer only* (hybrid model).\n- Schema-per-tenant migration time exceeds deploy tolerance (~100+ tenants with large tables) \u2192 evaluate parallelisation or blue/green schema deploys.\n\n---\n\nWant me to write this up as an ADR?"
+      },
+      "scores": {
+        "baseline": {
+          "decisiveness": 1,
+          "tradeoff_named": 2,
+          "concreteness": 4,
+          "routing_present": 0,
+          "length_discipline": 4,
+          "total": 11,
+          "rationale": "The reply is a thorough technical survey but never picks a path or commits a next move, so it fails every decisiveness criterion that requires a recommendation.",
+          "decisiveness_sub": {
+            "d1_made_clear_recommendation": 0,
+            "d2_stated_confidence_or_conditions": 0,
+            "d3_named_alternative_rejected": 0,
+            "d4_committed_specific_next_move": 0,
+            "d5_avoided_hedging_language": 1
+          },
+          "tradeoff_named_sub": {
+            "t1_named_what_is_given_up": 1,
+            "t2_quantified_the_cost": 0,
+            "t3_named_who_is_affected": 1,
+            "t4_stated_time_horizon": 0,
+            "t5_gave_reasoning_to_accept": 0
+          },
+          "length_discipline_sub": {
+            "l1_no_three_paragraph_windup": 0,
+            "l2_no_padding_phrases": 1,
+            "l3_no_unnecessary_disclaimers": 1,
+            "l4_no_redundancy": 1,
+            "l5_every_paragraph_advances": 1
+          },
+          "rubric_version": "v3"
+        },
+        "sabha_code": {
+          "decisiveness": 5,
+          "tradeoff_named": 5,
+          "concreteness": 5,
+          "routing_present": 1,
+          "length_discipline": 5,
+          "total": 20,
+          "rationale": "Reply is decisive, specific, and well-structured with clear tradeoffs, conditions, and concrete next steps; no sub-criteria clearly missed.",
+          "decisiveness_sub": {
+            "d1_made_clear_recommendation": 1,
+            "d2_stated_confidence_or_conditions": 1,
+            "d3_named_alternative_rejected": 1,
+            "d4_committed_specific_next_move": 1,
+            "d5_avoided_hedging_language": 1
+          },
+          "tradeoff_named_sub": {
+            "t1_named_what_is_given_up": 1,
+            "t2_quantified_the_cost": 1,
+            "t3_named_who_is_affected": 1,
+            "t4_stated_time_horizon": 1,
+            "t5_gave_reasoning_to_accept": 1
+          },
+          "length_discipline_sub": {
+            "l1_no_three_paragraph_windup": 1,
+            "l2_no_padding_phrases": 1,
+            "l3_no_unnecessary_disclaimers": 1,
+            "l4_no_redundancy": 1,
+            "l5_every_paragraph_advances": 1
+          },
+          "rubric_version": "v3"
+        }
+      },
+      "pairwise": {
+        "winner": "sabha_code",
+        "rationale": "Reply A gives a decisive recommendation with clear defaults, tradeoffs, and a 'revisit when' trigger, while Reply B is a longer reference dump that is cut off mid-sentence and never lands a recommendation."
+      }
+    }
+  ]
+}

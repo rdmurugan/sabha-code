@@ -149,7 +149,48 @@ See [`docs/CUSTOMIZATION.md`](./docs/CUSTOMIZATION.md) for walkthroughs.
 
 ## Does it actually work?
 
-A reproducible eval ships in [`evals/`](./evals/). 30 developer-shaped questions across 7 roles and 3 credibility-stress buckets (role-core / adversarial-reframing / underdog). Each question runs twice — no-system-prompt baseline vs Sabha Code charter loaded — and is judged by an LLM-as-judge using the **v3 sub-axis rubric** (decisiveness / tradeoff_named / length_discipline each decomposed into 5 binary sub-criteria, plus holistic concreteness and binary routing_present), plus pairwise preference. **Cross-model judge harness** supports `--judge-provider {anthropic,openai,google}` to defeat in-family bias.
+**Yes — 28/30 pairwise wins (93.3%) against a no-system-prompt baseline.** Full results from the 2026-05-18 run:
+
+| Metric | Baseline | Sabha Code | Δ |
+|---|---:|---:|---:|
+| Pairwise preference | — | **28/30 (93.3%)** | Wilson 95% CI [78.7%, 98.2%] |
+| Rubric total (/20) | 12.33 | **17.07** | **+4.74** |
+| decisiveness | 3.23 | 4.47 | +1.24 |
+| tradeoff_named | 2.50 | 3.50 | +1.00 |
+| concreteness | 3.50 | 4.23 | +0.73 |
+| routing_present | 0.00 | 1.00 | +1.00 |
+| length_discipline | 3.10 | 4.87 | +1.77 |
+
+Per-bucket pairwise:
+
+| Bucket | Win rate | What it tests |
+|---|---:|---|
+| Role-core (n=20) | **20/20 (100%)** | Operator-shaped engineering decisions in each role's sweet spot |
+| Adversarial reframing (n=5) | 4/5 (80%) | Questions where the right answer is to challenge the premise |
+| Underdog (n=5) | 4/5 (80%) | Definitional / lookup-shaped where baseline should be competitive |
+
+Per-role: Architect 6/6, Reviewer 4/4, Performance 5/5, Mentor 3/3, Tech Lead 2/2, Security 4/5, QA 4/5.
+
+**The 2 losses are diagnostic, not catastrophic.** Both share a *rubric-win-but-pairwise-loss* pattern — Sabha Code scored higher on the structured rubric, but the operator-judge preferred the alternative:
+
+- **adv-04 (Security adversarial):** charity-of-interpretation gap. Sabha Code dismissed the auditor's flag as wrong; baseline considered the alternative reading and offered a compliance path.
+- **und-04 (QA underdog):** over-structure on a one-paragraph definitional question. Routing-line meta-commentary distracted from the answer the user actually asked for.
+
+Both failure modes are documented in [`evals/results/latest.md`](./evals/results/latest.md) and worth keeping visible — they're where the protocol earns honest critique.
+
+### How it compares to Sabha OS
+
+Methodology is identical: v3 sub-axis rubric + pairwise preference + cross-model judge harness, applied to a different question domain.
+
+| | Sabha OS (n=50) | Sabha Code (n=30) |
+|---|---:|---:|
+| Pairwise | 48/50 (96%) | 28/30 (93.3%) |
+| Wilson 95% CI | [86.5%, 98.9%] | [78.7%, 98.2%] |
+| Domain | C-suite operator | Engineering |
+
+Both Wilson CIs overlap substantially — the directional claim "the protocol shape generalizes from operator to engineer" is supported; the magnitude can't yet be distinguished at these sample sizes.
+
+### Run it yourself
 
 ```bash
 pip install -r evals/requirements.txt
@@ -158,9 +199,7 @@ python evals/run_eval.py            # full n=30 run, ~$15-20, ~15 min
 python evals/run_eval.py --limit 3  # smoke first
 ```
 
-Methodology adapted from [Sabha OS evals](https://github.com/rdmurugan/sabhaos/tree/main/evals), which currently report 48/50 pairwise (96%, Wilson 95% CI [86.5%, 98.9%]) on the C-suite-shaped protocol. Sabha Code's first run is pending; results land in [`evals/results/`](./evals/results/) when complete.
-
-See [`evals/README.md`](./evals/README.md) for the full methodology, the credibility-claim posture, and what the eval intentionally does *not* test yet.
+Results land in [`evals/results/`](./evals/results/). The harness checkpoints after every question so a partial run is never lost. See [`evals/README.md`](./evals/README.md) for the full methodology, the credibility-claim posture, and what the eval intentionally does *not* test yet (human eval, in-IDE Copilot, multi-LLM candidate sweep).
 
 ## Compatibility
 
