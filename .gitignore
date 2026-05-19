@@ -4,6 +4,13 @@
 .idea/
 .vscode/
 
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+
 # User-local memory — projects using this repo as a template will have their
 # own memory/ folder; we don't ship one here.
 memory/
