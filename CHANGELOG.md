@@ -4,6 +4,27 @@ All notable changes to Sabha Code will be documented here. Format follows [Keep 
 
 > **Origin:** project conceived 2026-05-18 as the developer-focused sibling of [Sabha OS](https://github.com/rdmurugan/sabhaos). First public release same day.
 
+## [0.4.0] — 2026-05-18 (voice reframing — Chanakya references removed)
+
+### Changed
+
+Removed all "Chanakya tradition" framing from the user-facing docs and the protocol file. Sabha Code now leads with the voice characteristics directly — **decisive, terse, concrete, tradeoff-aware, grounded** — without a borrowed archetype.
+
+**Why:** the Chanakya framing carried two costs that didn't pay back for the developer audience:
+1. **Cognitive load.** Asking developers to read about a 4th-century BCE strategist before they can install a Copilot config is friction without a payoff. The voice principles are useful on their own.
+2. **Risk of being misread as ceremony.** The protocol's value is the structured discipline (routing + 5 voice characteristics + ask/engage mode). Tying it to a tradition invited the reading that the tradition itself is the value, which it isn't.
+
+**What stayed:** the name *Sabha* (Sanskrit/Tamil for *council*) remains — it's the product name and a clean one-word metaphor for the protocol's whole shape (you're not asking an oracle; you're convening a council). The 7-role structure, the v3 sub-axis rubric, the eval results — all unchanged.
+
+**Files updated:**
+- `README.md` — tagline reframed; "Why Sabha and Chanakya" framing replaced with the voice characteristics named directly; Credits section no longer cites Chanakya as the source tradition
+- `.github/copilot-instructions.md` — header, §3 title, and footer all reframed to "operator-grade discipline" instead of "Chanakya tradition"
+- `docs/PHILOSOPHY.md` — "Why Sabha and Chanakya?" section rewritten to "Why 'Sabha'? (the only ceremonial word)" — keeps the council metaphor; drops the archetype
+
+**No code changes.** The 7 role instruction files, the eval harness, the evaluation results, and the install path are unchanged. The 2026-05-18 eval numbers (28/30 pairwise, +4.74 rubric Δ) still describe the current protocol exactly — the rebrand is messaging, not mechanism.
+
+The relationship to [Sabha OS](https://github.com/rdmurugan/sabhaos) (which retains its own Chanakya framing for the C-suite audience) is preserved as "the developer-focused sibling of Sabha OS." Sabha OS readers who prefer the Chanakya tradition framing keep it there; Sabha Code reads cleaner for the developer audience.
+
 ## [0.3.0] — 2026-05-18 (eval results)
 
 ### First live eval results
@@ -98,7 +119,7 @@ This eval inherits Sabha OS's eval discipline (50-question, 4-bucket, v3 sub-axi
 
 ### Initial release
 
-- **`.github/copilot-instructions.md`** — the protocol; this IS Sabha Code. Routing-at-top-of-reply discipline, Chanakya voice, ask/engage mode discipline, grounding rules.
+- **`.github/copilot-instructions.md`** — the protocol; this IS Sabha Code. Routing-at-top-of-reply discipline, structured voice (decisive / terse / concrete / tradeoff-aware / grounded), ask/engage mode discipline, grounding rules.
 - **7 role instruction files** in `instructions/`:
   - `architect.instructions.md` — system design, ADRs, tech stack
   - `reviewer.instructions.md` — code review, naming, refactor calls
@@ -111,7 +132,7 @@ This eval inherits Sabha OS's eval discipline (50-question, 4-bucket, v3 sub-axi
   - `README.md` — pitch + install + 7-role table + how it differs from raw Copilot custom instructions
   - `docs/QUICKSTART.md` — 10-min install, including `memory/` folder setup with worked example
   - `docs/CUSTOMIZATION.md` — renaming roles, voice tuning, `applyTo` per-file routing
-  - `docs/PHILOSOPHY.md` — the 5 disciplines, the Chanakya tradition, what it's NOT
+  - `docs/PHILOSOPHY.md` — the 5 disciplines, what Sabha Code is and isn't
 - **Install paths documented:** `npx degit`, `gh repo create --template`, manual copy.
 - **MIT License.** Copyright Durai Rajamanickam (@rdmurugan).
 - **No code dependencies.** Pure markdown protocol. Works with any Copilot-supported IDE and any LLM Copilot uses (GPT-4 / Claude / Gemini).

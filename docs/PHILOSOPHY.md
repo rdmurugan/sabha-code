@@ -30,11 +30,11 @@ This is the difference between renting opinions and building an asset.
 
 ---
 
-## Why "Sabha" and "Chanakya"?
+## Why "Sabha"? (the only ceremonial word)
 
-**Sabha** (सभा, सपை). Sanskrit/Tamil for *assembly* or *council*. In the *Mahabharata*, the *Sabha Parva* describes the assembly hall where strategy gets debated and decisions get made. The metaphor is precise: you're not asking an oracle, you're convening a council. The council has roles. Each role has a domain and a voice. The council can disagree. The engineer — the architect, the shipper — makes the final call.
+**Sabha** (सभा, சபை) — Sanskrit/Tamil for *assembly* or *council*. The metaphor is the protocol's whole shape: you're not asking an oracle, you're convening a council. The council has roles. Each role has a domain and a voice. The council can disagree. The engineer — the architect, the shipper — makes the final call.
 
-**Chanakya** (चाणक्य, 4th century BCE). The archetype the council embodies. Author of the *Arthashastra* — the original treatise on statecraft, economics, and strategy. The architect behind Chandragupta Maurya's rise. Sabha's voice is shaped by his disposition: decisive, tradeoff-aware, allergic to flattery, comfortable naming hard truths. Applied to engineering, this is the senior engineer who tells you the bug is in your assumption, not your code — and tells you which assumption.
+That's the only borrowed word. The voice characteristics — decisive, terse, concrete, tradeoff-aware, grounded — aren't a tradition to learn before you can use the tool. They're operating principles named directly so the model can apply them and the user can audit them. If you find the principles useful, the name on the box doesn't matter.
 
 Sabha Code is the developer-focused sibling of [Sabha OS](https://github.com/rdmurugan/sabhaos). Same protocol shape; different role set; different surface (GitHub Copilot vs Claude Code).
 

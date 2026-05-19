@@ -1,8 +1,10 @@
 # Sabha Code
 
-> An open-source **engineering council protocol** for GitHub Copilot. Decisive, tradeoff-aware, grounded — in the Chanakya tradition. Routes every load-bearing engineering question through a 7-role council (Architect / Reviewer / Security / Performance / QA / Mentor / Tech Lead) and answers in a structured shape Copilot doesn't enforce by default.
+> An open-source **engineering council protocol** for GitHub Copilot. Routes every load-bearing engineering question through a 7-role council (Architect / Reviewer / Security / Performance / QA / Mentor / Tech Lead) and enforces a structured operator-grade voice: **decisive, terse, concrete, tradeoff-aware, grounded.**
 
-**Sabha** (சபை, सभा, Sanskrit for *council*). **Chanakya** (चाणक्य, the original strategic advisor — author of the *Arthashastra*) is the voice. Sabha Code is the developer-focused sibling of [Sabha OS](https://github.com/rdmurugan/sabhaos), which does the same for C-suite operators on Claude Code.
+**Sabha** (சபை, सभा, Sanskrit/Tamil for *council*) is the only ceremonial word in the project. The voice is just a structured set of operating principles — there's no archetype or tradition to learn before you can use it.
+
+Sabha Code is the developer-focused sibling of [Sabha OS](https://github.com/rdmurugan/sabhaos), which does the same for C-suite operators on Claude Code.
 
 Most Copilot replies are option-shaped: *"here are five approaches with pros and cons."* That's exhausting when you're building something. Sabha Code forces a different reply:
 
@@ -136,7 +138,7 @@ See [`docs/CUSTOMIZATION.md`](./docs/CUSTOMIZATION.md) for walkthroughs.
 |---|---|
 | [`docs/QUICKSTART.md`](./docs/QUICKSTART.md) | 10-minute install + first-question walkthrough |
 | [`docs/CUSTOMIZATION.md`](./docs/CUSTOMIZATION.md) | Renaming roles, adding roles, tuning voice |
-| [`docs/PHILOSOPHY.md`](./docs/PHILOSOPHY.md) | Why these 5 disciplines; the Chanakya tradition |
+| [`docs/PHILOSOPHY.md`](./docs/PHILOSOPHY.md) | Why these 5 disciplines; what Sabha Code is and isn't |
 | [`instructions/architect.instructions.md`](./instructions/architect.instructions.md) | Architect role — system design, ADRs |
 | [`instructions/reviewer.instructions.md`](./instructions/reviewer.instructions.md) | Reviewer role — code review, refactor calls |
 | [`instructions/security.instructions.md`](./instructions/security.instructions.md) | Security role — OWASP-shaped, threat modeling |
@@ -248,7 +250,7 @@ MIT. See [LICENSE](./LICENSE). Use it, fork it, ship it in your products — jus
 
 ## Credits
 
-Designed and developed by **Durai (@rdmurugan)** as a solo project — protocol, role instructions, packaging. MIT-licensed, started May 2026. Adapted from [Sabha OS](https://github.com/rdmurugan/sabhaos) (started October 2025), itself distilled from the Chanakya tradition of advisor-counsel, the OWASP / SRE / ADR canon, and operator-grade engineering practice shared across the open internet.
+Designed and developed by **Durai (@rdmurugan)** as a solo project — protocol, role instructions, packaging. MIT-licensed, started May 2026. Adapted from [Sabha OS](https://github.com/rdmurugan/sabhaos) (started October 2025). Voice and discipline distilled from the OWASP / Google SRE / ADR pattern canon, operator-grade engineering practice, and the body of senior-engineer mentorship shared across the open internet.
 
 Copyright © 2026 Durai (@rdmurugan). Released under MIT.
 
